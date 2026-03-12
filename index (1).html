@@ -1,0 +1,1777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LabLens Pro — Medical Lab Interpreter</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #080e14;
+  --bg2: #0d1520;
+  --bg3: #111d2c;
+  --panel: #0f1c2a;
+  --border: rgba(0,180,255,0.12);
+  --border2: rgba(0,180,255,0.22);
+  --accent: #00b4ff;
+  --accent2: #00ffd5;
+  --accent3: #ff4a6e;
+  --accent4: #f5a623;
+  --normal: #00e87a;
+  --warning: #f5a623;
+  --danger: #ff4a6e;
+  --critical: #ff0048;
+  --text: #e2eaf2;
+  --text2: #7fa4c4;
+  --text3: #3d6080;
+  --glow: 0 0 20px rgba(0,180,255,0.15);
+  --glow2: 0 0 30px rgba(0,180,255,0.25);
+  --mono: 'Space Mono', monospace;
+  --sans: 'DM Sans', sans-serif;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Background grid */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(0,180,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,180,255,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Ambient glow blobs */
+body::after {
+  content: '';
+  position: fixed;
+  top: -200px; left: -200px;
+  width: 600px; height: 600px;
+  background: radial-gradient(circle, rgba(0,180,255,0.06) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ===== HEADER ===== */
+header {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(8,14,20,0.92);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  height: 60px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+
+.logo {
+  display: flex; align-items: center; gap: 10px;
+  font-family: var(--mono);
+  font-size: 18px;
+  color: var(--accent);
+  letter-spacing: -0.5px;
+}
+
+.logo span { color: var(--accent2); }
+.logo-dot { width:8px; height:8px; background:var(--normal); border-radius:50%; animation: pulse 2s infinite; }
+
+@keyframes pulse {
+  0%,100% { opacity:1; box-shadow:0 0 0 0 rgba(0,232,122,0.4); }
+  50% { opacity:0.8; box-shadow:0 0 0 6px rgba(0,232,122,0); }
+}
+
+.header-right {
+  display: flex; align-items: center; gap: 16px;
+  font-family: var(--mono); font-size: 11px; color: var(--text2);
+}
+
+.status-pill {
+  display: flex; align-items: center; gap: 6px;
+  background: rgba(0,232,122,0.08);
+  border: 1px solid rgba(0,232,122,0.2);
+  border-radius: 20px; padding: 4px 12px;
+  color: var(--normal);
+}
+
+#clock { color: var(--text2); }
+
+/* ===== NAV TABS ===== */
+.nav-tabs {
+  display: flex; gap: 2px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  overflow-x: auto;
+  position: relative; z-index: 10;
+}
+
+.nav-tab {
+  padding: 12px 20px;
+  font-family: var(--sans); font-size: 13px; font-weight: 500;
+  color: var(--text2);
+  cursor: pointer; border: none; background: transparent;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+  transition: all 0.2s;
+  display: flex; align-items: center; gap: 7px;
+}
+
+.nav-tab:hover { color: var(--text); }
+.nav-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.tab-icon { font-size: 14px; }
+
+/* ===== MAIN LAYOUT ===== */
+main { position: relative; z-index: 1; }
+
+.tab-panel { display: none; padding: 24px; min-height: calc(100vh - 120px); }
+.tab-panel.active { display: block; }
+
+/* ===== SECTION HEADERS ===== */
+.section-header {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 20px;
+}
+
+.section-title {
+  font-family: var(--mono); font-size: 13px; font-weight: 700;
+  color: var(--accent); letter-spacing: 2px; text-transform: uppercase;
+}
+
+.section-line { flex: 1; height: 1px; background: var(--border); }
+
+/* ===== CARDS ===== */
+.card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.card:hover { border-color: var(--border2); box-shadow: var(--glow); }
+
+.card-header {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+
+.card-title {
+  font-family: var(--mono); font-size: 11px; font-weight: 700;
+  color: var(--accent); letter-spacing: 1.5px; text-transform: uppercase;
+}
+
+.card-body { padding: 20px; }
+
+/* ===== STAT CARDS (Dashboard) ===== */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px; margin-bottom: 24px;
+}
+
+.stat-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  position: relative; overflow: hidden;
+  transition: all 0.2s;
+}
+
+.stat-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0;
+  height: 3px;
+}
+
+.stat-card.blue::before { background: var(--accent); }
+.stat-card.green::before { background: var(--normal); }
+.stat-card.purple::before { background: #a855f7; }
+.stat-card.orange::before { background: var(--warning); }
+
+.stat-card:hover {
+  border-color: var(--border2);
+  box-shadow: var(--glow);
+  transform: translateY(-2px);
+}
+
+.stat-icon { font-size: 22px; margin-bottom: 12px; }
+.stat-label { font-size: 11px; color: var(--text2); font-family: var(--mono); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; }
+.stat-value { font-family: var(--mono); font-size: 28px; font-weight: 700; margin-bottom: 4px; }
+.stat-card.blue .stat-value { color: var(--accent); }
+.stat-card.green .stat-value { color: var(--normal); }
+.stat-card.purple .stat-value { color: #a855f7; }
+.stat-card.orange .stat-value { color: var(--warning); }
+.stat-desc { font-size: 12px; color: var(--text3); }
+
+/* ===== QUICK ACTIONS ===== */
+.quick-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px; margin-bottom: 24px;
+}
+
+.quick-btn {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 18px;
+  cursor: pointer; color: var(--text);
+  font-family: var(--sans); font-size: 13px; font-weight: 500;
+  display: flex; align-items: center; gap: 10px;
+  transition: all 0.2s;
+  text-align: left;
+}
+
+.quick-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: var(--glow);
+  transform: translateX(3px);
+}
+
+/* ===== ACTIVITY LOG ===== */
+.activity-log {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  font-family: var(--mono); font-size: 12px;
+}
+
+.log-line { padding: 4px 0; display: flex; gap: 12px; align-items: center; }
+.log-time { color: var(--text3); min-width: 60px; }
+.log-ok { color: var(--normal); }
+.log-info { color: var(--accent); }
+
+/* ===== FORMS ===== */
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+@media (max-width: 768px) { .form-grid { grid-template-columns: 1fr; } }
+
+.form-group { margin-bottom: 16px; }
+.form-label {
+  display: block; margin-bottom: 6px;
+  font-size: 12px; font-weight: 600; color: var(--text2);
+  font-family: var(--mono); letter-spacing: 0.5px; text-transform: uppercase;
+}
+
+.form-control {
+  width: 100%;
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  padding: 10px 14px;
+  color: var(--text);
+  font-family: var(--sans); font-size: 14px;
+  transition: all 0.2s;
+  outline: none;
+}
+
+.form-control:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(0,180,255,0.1);
+}
+
+select.form-control option { background: var(--bg2); }
+
+.form-check {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 12px; cursor: pointer;
+}
+
+.form-check input[type="checkbox"],
+.form-check input[type="radio"] {
+  width: 16px; height: 16px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.form-check label { font-size: 14px; cursor: pointer; }
+
+/* ===== BUTTONS ===== */
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 10px 20px;
+  border-radius: 8px; border: none; cursor: pointer;
+  font-family: var(--sans); font-size: 13px; font-weight: 600;
+  transition: all 0.2s;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #000;
+}
+.btn-primary:hover { background: #33c3ff; box-shadow: 0 0 20px rgba(0,180,255,0.4); transform: translateY(-1px); }
+
+.btn-success {
+  background: var(--normal);
+  color: #000;
+}
+.btn-success:hover { background: #33ef8f; box-shadow: 0 0 20px rgba(0,232,122,0.4); }
+
+.btn-danger {
+  background: rgba(255,74,110,0.15);
+  color: var(--danger);
+  border: 1px solid rgba(255,74,110,0.3);
+}
+.btn-danger:hover { background: rgba(255,74,110,0.25); }
+
+.btn-ghost {
+  background: var(--bg3);
+  color: var(--text2);
+  border: 1px solid var(--border);
+}
+.btn-ghost:hover { border-color: var(--border2); color: var(--text); }
+
+.btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+
+/* ===== RESULTS DISPLAY ===== */
+.result-box {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px;
+  font-family: var(--mono); font-size: 13px;
+  min-height: 200px;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  overflow-y: auto;
+}
+
+.result-header { color: var(--accent); font-weight: 700; font-size: 14px; }
+.result-normal { color: var(--normal); font-weight: 700; }
+.result-warning { color: var(--warning); font-weight: 700; }
+.result-danger { color: var(--danger); font-weight: 700; }
+.result-critical { color: var(--critical); font-weight: 700; animation: flashred 1s infinite; }
+.result-value { color: var(--accent2); }
+.result-dim { color: var(--text3); }
+
+@keyframes flashred {
+  0%,100% { color: var(--critical); }
+  50% { color: #ff8099; }
+}
+
+/* ===== INTERPRET TAB ===== */
+.interpret-layout {
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  gap: 20px;
+}
+
+@media (max-width: 900px) { .interpret-layout { grid-template-columns: 1fr; } }
+
+/* ===== BATCH TAB ===== */
+.batch-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+@media (max-width: 768px) { .batch-layout { grid-template-columns: 1fr; } }
+
+.batch-textarea {
+  width: 100%;
+  min-height: 320px;
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  padding: 14px;
+  color: var(--text);
+  font-family: var(--mono); font-size: 12px;
+  resize: vertical;
+  outline: none;
+  line-height: 1.7;
+}
+
+.batch-textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(0,180,255,0.1);
+}
+
+/* ===== CALCULATORS TAB ===== */
+.calc-layout {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 20px;
+}
+
+@media (max-width: 900px) { .calc-layout { grid-template-columns: 1fr; } }
+
+.calc-list {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  max-height: calc(100vh - 180px);
+  overflow-y: auto;
+}
+
+.calc-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px; color: var(--text2);
+  transition: all 0.15s;
+  border: 1px solid transparent;
+}
+
+.calc-item:hover { color: var(--text); background: var(--bg3); }
+.calc-item.active {
+  color: var(--accent);
+  background: rgba(0,180,255,0.08);
+  border-color: rgba(0,180,255,0.2);
+}
+
+.calc-item-icon { font-size: 15px; width: 22px; text-align: center; }
+
+/* ===== REPORT PANEL ===== */
+.report-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 10px; border-radius: 20px;
+  font-family: var(--mono); font-size: 11px; font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.badge-normal { background: rgba(0,232,122,0.12); color: var(--normal); border: 1px solid rgba(0,232,122,0.25); }
+.badge-low { background: rgba(0,180,255,0.12); color: var(--accent); border: 1px solid rgba(0,180,255,0.25); }
+.badge-high { background: rgba(245,166,35,0.12); color: var(--warning); border: 1px solid rgba(245,166,35,0.25); }
+.badge-critical { background: rgba(255,0,72,0.12); color: var(--critical); border: 1px solid rgba(255,0,72,0.3); }
+
+/* ===== INFO TAB ===== */
+.info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+@media (max-width: 768px) { .info-grid { grid-template-columns: 1fr; } }
+
+.feature-list li {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px; color: var(--text2);
+  display: flex; align-items: center; gap: 10px;
+  list-style: none;
+}
+
+.feature-list li::before { content: '→'; color: var(--accent); font-family: var(--mono); }
+
+/* ===== DISCLAIMER ===== */
+.disclaimer-box {
+  background: rgba(255,74,110,0.05);
+  border: 1px solid rgba(255,74,110,0.2);
+  border-radius: 10px; padding: 20px;
+  font-size: 13px; color: var(--text2); line-height: 1.8;
+}
+
+/* ===== SCROLLBAR ===== */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--text3); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text2); }
+
+/* ===== DIVIDER ===== */
+.divider { height: 1px; background: var(--border); margin: 20px 0; }
+
+/* ===== PRINT REPORT MODAL ===== */
+.modal-overlay {
+  display: none;
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(0,0,0,0.8);
+  backdrop-filter: blur(4px);
+  align-items: center; justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+
+.modal {
+  background: var(--panel);
+  border: 1px solid var(--border2);
+  border-radius: 16px;
+  padding: 32px;
+  max-width: 700px; width: 90%;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: 0 0 60px rgba(0,180,255,0.15);
+}
+
+.modal-title {
+  font-family: var(--mono); font-size: 16px; font-weight: 700;
+  color: var(--accent); margin-bottom: 20px;
+}
+
+/* ===== AI INSIGHT BOX ===== */
+.ai-box {
+  background: linear-gradient(135deg, rgba(0,255,213,0.05), rgba(0,180,255,0.05));
+  border: 1px solid rgba(0,255,213,0.2);
+  border-radius: 10px;
+  padding: 16px;
+  margin-top: 16px;
+}
+
+.ai-label {
+  font-family: var(--mono); font-size: 10px; font-weight: 700;
+  color: var(--accent2); letter-spacing: 2px; text-transform: uppercase;
+  margin-bottom: 8px;
+  display: flex; align-items: center; gap: 6px;
+}
+
+.ai-text { font-size: 13px; color: var(--text2); line-height: 1.7; }
+
+/* ===== FOOTER ===== */
+footer {
+  border-top: 1px solid var(--border);
+  background: var(--bg2);
+  padding: 10px 24px;
+  display: flex; align-items: center; justify-content: space-between;
+  font-family: var(--mono); font-size: 11px; color: var(--text3);
+  position: relative; z-index: 10;
+}
+
+/* ===== TOOLTIP ===== */
+[data-tip] { position: relative; }
+[data-tip]:hover::after {
+  content: attr(data-tip);
+  position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%);
+  background: var(--bg3); color: var(--text); font-size: 11px;
+  padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border2);
+  white-space: nowrap; margin-bottom: 6px; font-family: var(--sans);
+  pointer-events: none; z-index: 999;
+}
+
+/* ===== REFERENCE RANGES TABLE ===== */
+.ref-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.ref-table th {
+  background: var(--bg3); padding: 10px 14px; text-align: left;
+  font-family: var(--mono); font-size: 11px; color: var(--accent);
+  letter-spacing: 1px; text-transform: uppercase; border-bottom: 1px solid var(--border);
+}
+.ref-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--text2); }
+.ref-table tr:hover td { background: var(--bg3); color: var(--text); }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <div class="logo-dot"></div>
+    Lab<span>Lens</span>&nbsp;Pro
+  </div>
+  <div class="header-right">
+    <div class="status-pill">● System Ready</div>
+    <span id="clock">00:00:00</span>
+  </div>
+</header>
+
+<!-- NAV TABS -->
+<nav class="nav-tabs">
+  <button class="nav-tab active" onclick="showTab('dashboard')"><span class="tab-icon">🏠</span>Dashboard</button>
+  <button class="nav-tab" onclick="showTab('interpret')"><span class="tab-icon">🔬</span>Interpret</button>
+  <button class="nav-tab" onclick="showTab('calculators')"><span class="tab-icon">🧮</span>Calculators</button>
+  <button class="nav-tab" onclick="showTab('batch')"><span class="tab-icon">📊</span>Batch</button>
+  <button class="nav-tab" onclick="showTab('reference')"><span class="tab-icon">📋</span>Reference</button>
+  <button class="nav-tab" onclick="showTab('info')"><span class="tab-icon">ℹ️</span>Info</button>
+</nav>
+
+<main>
+
+<!-- ========== DASHBOARD TAB ========== -->
+<div id="tab-dashboard" class="tab-panel active">
+  <div class="stats-grid">
+    <div class="stat-card blue">
+      <div class="stat-icon">🔬</div>
+      <div class="stat-label">Lab Panels</div>
+      <div class="stat-value">12</div>
+      <div class="stat-desc">Comprehensive test panels</div>
+    </div>
+    <div class="stat-card green">
+      <div class="stat-icon">🧪</div>
+      <div class="stat-label">Total Tests</div>
+      <div class="stat-value">95+</div>
+      <div class="stat-desc">Individual analytes</div>
+    </div>
+    <div class="stat-card purple">
+      <div class="stat-icon">🧮</div>
+      <div class="stat-label">Calculators</div>
+      <div class="stat-value">14</div>
+      <div class="stat-desc">Medical calculations</div>
+    </div>
+    <div class="stat-card orange">
+      <div class="stat-icon">⚡</div>
+      <div class="stat-label">System</div>
+      <div class="stat-value">Ready</div>
+      <div class="stat-desc">All systems operational</div>
+    </div>
+  </div>
+
+  <div class="section-header">
+    <span class="section-title">Quick Actions</span>
+    <div class="section-line"></div>
+  </div>
+
+  <div class="quick-actions">
+    <button class="quick-btn" onclick="showTab('interpret')">🔬 Interpret Lab Test</button>
+    <button class="quick-btn" onclick="openCalc('egfr')">🧬 Calculate eGFR</button>
+    <button class="quick-btn" onclick="openCalc('corrected_na')">⚖️ Corrected Sodium</button>
+    <button class="quick-btn" onclick="openCalc('bmi')">📏 BMI Calculator</button>
+    <button class="quick-btn" onclick="showTab('batch')">📊 Batch Processing</button>
+    <button class="quick-btn" onclick="showTab('reference')">📋 Reference Ranges</button>
+  </div>
+
+  <div class="section-header">
+    <span class="section-title">System Log</span>
+    <div class="section-line"></div>
+  </div>
+
+  <div class="activity-log">
+    <div class="log-line"><span class="log-time log-ok">✅</span><span>System initialized — LabLens Pro v3.0</span></div>
+    <div class="log-line"><span class="log-time log-ok">✅</span><span>12 lab panels loaded (CBC, BMP, CMP, Lipid, LFT, Thyroid, Coag, ABG, Urinalysis, Iron, Cardiac, Inflammatory)</span></div>
+    <div class="log-line"><span class="log-time log-ok">✅</span><span>95+ analyte reference ranges initialized with sex-specific values</span></div>
+    <div class="log-line"><span class="log-time log-ok">✅</span><span>14 medical calculators ready</span></div>
+    <div class="log-line"><span class="log-time log-info">ℹ️</span><span>Educational tool — not for clinical decision making</span></div>
+    <div class="log-line"><span class="log-time log-ok">✅</span><span>GUI ready for clinical analysis training</span></div>
+  </div>
+</div>
+
+<!-- ========== INTERPRET TAB ========== -->
+<div id="tab-interpret" class="tab-panel">
+  <div class="interpret-layout">
+    <!-- Input panel -->
+    <div>
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">🔬 Test Parameters</span>
+        </div>
+        <div class="card-body">
+          <div class="form-group">
+            <label class="form-label">Test Panel</label>
+            <select class="form-control" id="panelSelect" onchange="updateTests()">
+              <option value="">-- Select Panel --</option>
+              <optgroup label="Hematology">
+                <option value="CBC">CBC — Complete Blood Count</option>
+              </optgroup>
+              <optgroup label="Chemistry">
+                <option value="BMP">BMP — Basic Metabolic Panel</option>
+                <option value="CMP">CMP — Comprehensive Metabolic</option>
+                <option value="LFT">LFT — Liver Function Tests</option>
+                <option value="LIPID">Lipid Panel</option>
+                <option value="THYROID">Thyroid Function</option>
+                <option value="IRON">Iron Studies</option>
+              </optgroup>
+              <optgroup label="Coagulation & Gases">
+                <option value="COAG">Coagulation Studies</option>
+                <option value="ABG">ABG — Arterial Blood Gas</option>
+              </optgroup>
+              <optgroup label="Speciality">
+                <option value="URINALYSIS">Urinalysis</option>
+                <option value="CARDIAC">Cardiac Markers</option>
+                <option value="INFLAMMATORY">Inflammatory Markers</option>
+              </optgroup>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Test Name</label>
+            <select class="form-control" id="testSelect">
+              <option value="">-- Select Panel First --</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Patient Value</label>
+            <input type="number" class="form-control" id="testValue" placeholder="Enter numeric value" step="any">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Patient Sex</label>
+            <select class="form-control" id="patientSex">
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+            </select>
+          </div>
+
+          <div class="btn-row">
+            <button class="btn btn-primary" onclick="interpretTest()">🔬 Interpret</button>
+            <button class="btn btn-ghost" onclick="clearInterpret()">↺ Clear</button>
+            <button class="btn btn-ghost" onclick="printReport()">🖨️ Report</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Results panel -->
+    <div>
+      <div class="card" style="height:100%;">
+        <div class="card-header">
+          <span class="card-title">📊 Interpretation Results</span>
+          <span id="result-badge"></span>
+        </div>
+        <div class="card-body" style="height:calc(100% - 54px);">
+          <div id="result-display" class="result-box" style="min-height:300px; max-height:500px;">
+            <span class="result-dim">↑ Select a panel, test, and value above, then click Interpret.</span>
+          </div>
+          <div id="ai-insight" class="ai-box" style="display:none;">
+            <div class="ai-label">🤖 AI Clinical Insight</div>
+            <div class="ai-text" id="ai-text"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== CALCULATORS TAB ========== -->
+<div id="tab-calculators" class="tab-panel">
+  <div class="calc-layout">
+    <!-- Calc list -->
+    <div class="calc-list" id="calcList">
+      <div class="calc-item active" onclick="selectCalc('egfr',this)"><span class="calc-item-icon">🧬</span>eGFR (CKD-EPI)</div>
+      <div class="calc-item" onclick="selectCalc('corrected_na',this)"><span class="calc-item-icon">⚖️</span>Corrected Sodium</div>
+      <div class="calc-item" onclick="selectCalc('ldl',this)"><span class="calc-item-icon">🩸</span>LDL (Friedewald)</div>
+      <div class="calc-item" onclick="selectCalc('bmi',this)"><span class="calc-item-icon">📏</span>BMI Calculator</div>
+      <div class="calc-item" onclick="selectCalc('corrected_ca',this)"><span class="calc-item-icon">🦴</span>Corrected Calcium</div>
+      <div class="calc-item" onclick="selectCalc('anion_gap',this)"><span class="calc-item-icon">⚡</span>Anion Gap</div>
+      <div class="calc-item" onclick="selectCalc('meld',this)"><span class="calc-item-icon">💚</span>MELD Score</div>
+      <div class="calc-item" onclick="selectCalc('chads',this)"><span class="calc-item-icon">🧠</span>CHADS₂-VASc</div>
+      <div class="calc-item" onclick="selectCalc('ibw',this)"><span class="calc-item-icon">⚖️</span>Ideal Body Weight</div>
+      <div class="calc-item" onclick="selectCalc('osmolality',this)"><span class="calc-item-icon">🧪</span>Serum Osmolality</div>
+      <div class="calc-item" onclick="selectCalc('na_deficit',this)"><span class="calc-item-icon">💧</span>Sodium Deficit</div>
+      <div class="calc-item" onclick="selectCalc('ast_alt',this)"><span class="calc-item-icon">🔬</span>AST/ALT Ratio</div>
+      <div class="calc-item" onclick="selectCalc('delta',this)"><span class="calc-item-icon">∆</span>Delta-Delta Gap</div>
+      <div class="calc-item" onclick="selectCalc('albumin_ag',this)"><span class="calc-item-icon">🩸</span>Albumin-Corrected AG</div>
+    </div>
+
+    <!-- Calc input + output -->
+    <div>
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-header">
+          <span class="card-title" id="calcTitle">🧬 eGFR Calculator</span>
+        </div>
+        <div class="card-body">
+          <div id="calcFields"></div>
+          <div class="btn-row">
+            <button class="btn btn-success" onclick="runCalc()">🔢 Calculate</button>
+            <button class="btn btn-ghost" onclick="clearCalc()">↺ Clear</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><span class="card-title">📊 Results</span></div>
+        <div class="card-body">
+          <div id="calcResult" class="result-box" style="min-height:180px;">
+            <span class="result-dim">Results will appear here after calculation.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== BATCH TAB ========== -->
+<div id="tab-batch" class="tab-panel">
+  <div class="card" style="margin-bottom:16px;">
+    <div class="card-header"><span class="card-title">📝 Format Instructions</span></div>
+    <div class="card-body">
+      <p style="font-family:var(--mono);font-size:12px;color:var(--text2);line-height:1.9;">
+        Enter tests one per line: &nbsp;<span style="color:var(--accent2)">PANEL, TEST_NAME, VALUE</span><br>
+        Example: &nbsp;<span style="color:var(--accent)">CBC, Hemoglobin, 14.5</span>&nbsp; or &nbsp;<span style="color:var(--accent)">BMP, Sodium, 135</span><br>
+        Lines starting with <span style="color:var(--text3)">#</span> are treated as comments. Sex-specific ranges default to male — add <span style="color:var(--accent2)">,female</span> to override.
+      </p>
+    </div>
+  </div>
+
+  <div class="batch-layout">
+    <div>
+      <div class="section-header"><span class="section-title">Input</span><div class="section-line"></div></div>
+      <textarea class="batch-textarea" id="batchInput" placeholder="# Enter tests here&#10;CBC, Hemoglobin, 14.5&#10;BMP, Sodium, 135&#10;LIPID, LDL, 120"></textarea>
+      <div class="btn-row" style="margin-top:12px;">
+        <button class="btn btn-primary" onclick="processBatch()">⚡ Process Batch</button>
+        <button class="btn btn-ghost" onclick="loadExample()">📋 Load Example</button>
+        <button class="btn btn-danger" onclick="clearBatch()">🗑️ Clear</button>
+      </div>
+    </div>
+    <div>
+      <div class="section-header"><span class="section-title">Results</span><div class="section-line"></div></div>
+      <div id="batchOutput" class="result-box" style="min-height:320px; max-height:500px;">
+        <span class="result-dim">Batch results will appear here.</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== REFERENCE TAB ========== -->
+<div id="tab-reference" class="tab-panel">
+  <div class="form-group" style="max-width:300px;margin-bottom:20px;">
+    <label class="form-label">Filter by Panel</label>
+    <select class="form-control" id="refPanelFilter" onchange="renderReferenceTable()">
+      <option value="ALL">All Panels</option>
+      <option value="CBC">CBC</option>
+      <option value="BMP">BMP</option>
+      <option value="CMP">CMP</option>
+      <option value="LFT">LFT</option>
+      <option value="LIPID">Lipid Panel</option>
+      <option value="THYROID">Thyroid</option>
+      <option value="COAG">Coagulation</option>
+      <option value="ABG">ABG</option>
+      <option value="IRON">Iron Studies</option>
+      <option value="URINALYSIS">Urinalysis</option>
+      <option value="CARDIAC">Cardiac Markers</option>
+      <option value="INFLAMMATORY">Inflammatory</option>
+    </select>
+  </div>
+  <div class="card">
+    <div class="card-header"><span class="card-title">📋 Reference Ranges</span></div>
+    <div class="card-body" style="padding:0; overflow:auto;">
+      <table class="ref-table" id="refTable">
+        <thead>
+          <tr><th>Panel</th><th>Test</th><th>Unit</th><th>Male Range</th><th>Female Range</th><th>Critical Low</th><th>Critical High</th></tr>
+        </thead>
+        <tbody id="refTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ========== INFO TAB ========== -->
+<div id="tab-info" class="tab-panel">
+  <div class="info-grid">
+    <div>
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-header"><span class="card-title">About LabLens Pro</span></div>
+        <div class="card-body">
+          <p style="font-family:var(--mono);font-size:22px;font-weight:700;color:var(--accent);margin-bottom:8px;">LabLens Pro v3.0</p>
+          <p style="font-size:13px;color:var(--text2);line-height:1.8;margin-bottom:16px;">A comprehensive web-based medical laboratory result interpreter built for MLS students, healthcare trainees, and clinical educators.</p>
+          <ul class="feature-list">
+            <li>12 comprehensive lab panels</li>
+            <li>95+ individual analyte tests</li>
+            <li>Sex-specific reference ranges</li>
+            <li>Critical value flagging</li>
+            <li>14 medical calculators</li>
+            <li>Batch processing mode</li>
+            <li>AI-powered clinical insights</li>
+            <li>Printable PDF reports</li>
+            <li>Offline capable — no server needed</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><span class="card-title">Panels Included</span></div>
+        <div class="card-body">
+          <ul class="feature-list">
+            <li>CBC — Complete Blood Count (extended with differentials)</li>
+            <li>BMP / CMP — Metabolic Panels</li>
+            <li>LFT — Liver Function Tests</li>
+            <li>Lipid Panel — Full cholesterol panel</li>
+            <li>Thyroid — TSH, T3, T4, Anti-TPO</li>
+            <li>Coagulation — PT, PTT, INR, D-Dimer</li>
+            <li>ABG — Arterial Blood Gas</li>
+            <li>Urinalysis — Full urine panel</li>
+            <li>Iron Studies — Fe, TIBC, Ferritin, Sat%</li>
+            <li>Cardiac Markers — Troponin, CK-MB, BNP</li>
+            <li>Inflammatory — CRP, ESR, Procalcitonin</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="disclaimer-box" style="margin-bottom:16px;">
+        <div style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--danger);margin-bottom:12px;">⚠️ IMPORTANT DISCLAIMER</div>
+        <p style="line-height:1.9;">This software is designed for <strong>EDUCATIONAL PURPOSES ONLY</strong>. It is NOT intended for clinical decision making, patient diagnosis, or treatment planning. Always consult a qualified healthcare professional for medical decisions.</p>
+        <br>
+        <p>Reference ranges may vary between laboratories. All calculations and interpretations should be verified by a qualified medical professional before any educational or training application.</p>
+        <br>
+        <p style="font-size:12px;color:var(--text3);">By using this software, you acknowledge it is an educational training tool only.</p>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><span class="card-title">Developer Info</span></div>
+        <div class="card-body">
+          <p style="font-family:var(--mono);font-size:13px;color:var(--text2);line-height:2;">
+            Built by: <span style="color:var(--accent)">Manu Vincent</span><br>
+            Role: <span style="color:var(--text)">3rd Year MLS Student</span><br>
+            Institution: <span style="color:var(--text)">Accra Technical University</span><br>
+            Expected graduation: <span style="color:var(--text)">2027</span><br>
+            Clinical intern: <span style="color:var(--text)">Greater Accra Regional Hospital</span><br>
+            Live app: <a href="https://VincentAkwas.github.io/lablens" target="_blank" style="color:var(--accent2);">VincentAkwas.github.io/lablens</a>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<!-- PRINT REPORT MODAL -->
+<div class="modal-overlay" id="reportModal">
+  <div class="modal">
+    <div class="modal-title">🖨️ Patient Report</div>
+    <div id="reportContent" style="font-family:var(--mono);font-size:12px;line-height:1.9;color:var(--text2);"></div>
+    <div style="margin-top:20px;display:flex;gap:10px;">
+      <button class="btn btn-primary" onclick="window.print()">🖨️ Print</button>
+      <button class="btn btn-ghost" onclick="closeModal()">✕ Close</button>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <span>LabLens Pro v3.0 — Educational Tool Only</span>
+  <span style="color:var(--text3);">Not for clinical use</span>
+</footer>
+
+<script>
+// ========================================
+// DATA: ALL LAB REFERENCE RANGES
+// ========================================
+const LAB_DATA = {
+  CBC: {
+    "Hemoglobin": { unit:"g/dL", male:[13.5,17.5], female:[12.0,15.5], critLow:7, critHigh:20, info:"Oxygen-carrying protein in red blood cells." },
+    "Hematocrit": { unit:"%", male:[41,53], female:[36,46], critLow:21, critHigh:60, info:"Percentage of red blood cells in blood volume." },
+    "RBC": { unit:"×10¹²/L", male:[4.5,5.9], female:[4.0,5.2], critLow:2, critHigh:7, info:"Red blood cell count." },
+    "MCV": { unit:"fL", male:[80,100], female:[80,100], critLow:60, critHigh:120, info:"Mean corpuscular volume — size of RBCs." },
+    "MCH": { unit:"pg", male:[27,33], female:[27,33], critLow:20, critHigh:40, info:"Mean corpuscular hemoglobin." },
+    "MCHC": { unit:"g/dL", male:[32,36], female:[32,36], critLow:28, critHigh:38, info:"Mean corpuscular hemoglobin concentration." },
+    "RDW-CV": { unit:"%", male:[11.5,14.5], female:[11.5,14.5], critLow:null, critHigh:18, info:"Red cell distribution width — variation in RBC size." },
+    "RDW-SD": { unit:"fL", male:[39,46], female:[39,46], critLow:null, critHigh:60, info:"Standard deviation of RBC size distribution." },
+    "WBC": { unit:"×10⁹/L", male:[4.0,11.0], female:[4.0,11.0], critLow:2, critHigh:30, info:"White blood cell count — immune defense cells." },
+    "Neutrophils %": { unit:"%", male:[50,70], female:[50,70], critLow:null, critHigh:null, info:"Most common WBC; first responders to infection." },
+    "Neutrophils Abs": { unit:"×10⁹/L", male:[1.8,7.7], female:[1.8,7.7], critLow:0.5, critHigh:20, info:"Absolute neutrophil count." },
+    "Lymphocytes %": { unit:"%", male:[20,40], female:[20,40], critLow:null, critHigh:null, info:"Lymphocytes — key adaptive immunity cells." },
+    "Lymphocytes Abs": { unit:"×10⁹/L", male:[1.0,4.8], female:[1.0,4.8], critLow:0.3, critHigh:15, info:"Absolute lymphocyte count." },
+    "Monocytes %": { unit:"%", male:[2,8], female:[2,8], critLow:null, critHigh:null, info:"Monocytes — phagocytes and antigen presenters." },
+    "Monocytes Abs": { unit:"×10⁹/L", male:[0.2,0.8], female:[0.2,0.8], critLow:null, critHigh:3, info:"Absolute monocyte count." },
+    "Eosinophils %": { unit:"%", male:[1,4], female:[1,4], critLow:null, critHigh:null, info:"Eosinophils — allergic/parasitic responses." },
+    "Eosinophils Abs": { unit:"×10⁹/L", male:[0.0,0.45], female:[0.0,0.45], critLow:null, critHigh:2, info:"Absolute eosinophil count." },
+    "Basophils %": { unit:"%", male:[0,1], female:[0,1], critLow:null, critHigh:null, info:"Basophils — allergic and inflammatory responses." },
+    "Basophils Abs": { unit:"×10⁹/L", male:[0.0,0.1], female:[0.0,0.1], critLow:null, critHigh:1, info:"Absolute basophil count." },
+    "Immature Granulocytes %": { unit:"%", male:[0,0.5], female:[0,0.5], critLow:null, critHigh:5, info:"Immature granulocytes (IG%) — indicates left shift or bone marrow stress." },
+    "Immature Granulocytes Abs": { unit:"×10⁹/L", male:[0,0.03], female:[0,0.03], critLow:null, critHigh:0.5, info:"Absolute immature granulocyte count." },
+    "Platelets": { unit:"×10⁹/L", male:[150,400], female:[150,400], critLow:50, critHigh:1000, info:"Blood clotting cells." },
+    "MPV": { unit:"fL", male:[7.5,12.5], female:[7.5,12.5], critLow:null, critHigh:null, info:"Mean platelet volume — platelet size." },
+    "P-LCR": { unit:"%", male:[15,35], female:[15,35], critLow:null, critHigh:null, info:"Platelet large cell ratio." },
+    "PCT": { unit:"%", male:[0.15,0.35], female:[0.15,0.35], critLow:null, critHigh:null, info:"Plateletcrit — total platelet volume fraction." },
+    "Reticulocytes %": { unit:"%", male:[0.5,2.5], female:[0.5,2.5], critLow:null, critHigh:null, info:"Immature RBCs — reflects bone marrow erythropoietic activity." },
+    "Reticulocytes Abs": { unit:"×10⁹/L", male:[25,85], female:[25,75], critLow:null, critHigh:null, info:"Absolute reticulocyte count." },
+  },
+  BMP: {
+    "Sodium": { unit:"mEq/L", male:[136,145], female:[136,145], critLow:120, critHigh:160, info:"Primary extracellular cation — fluid balance and nerve function." },
+    "Potassium": { unit:"mEq/L", male:[3.5,5.0], female:[3.5,5.0], critLow:3.0, critHigh:6.0, info:"Primary intracellular cation — cardiac and muscle function." },
+    "Chloride": { unit:"mEq/L", male:[98,107], female:[98,107], critLow:80, critHigh:120, info:"Primary extracellular anion — acid-base balance." },
+    "Bicarbonate": { unit:"mEq/L", male:[22,29], female:[22,29], critLow:15, critHigh:40, info:"Buffer — acid-base homeostasis." },
+    "BUN": { unit:"mg/dL", male:[7,20], female:[7,20], critLow:null, critHigh:100, info:"Blood urea nitrogen — kidney function marker." },
+    "Creatinine": { unit:"mg/dL", male:[0.7,1.3], female:[0.5,1.1], critLow:null, critHigh:10, info:"Muscle metabolism waste — primary kidney function marker." },
+    "Glucose": { unit:"mg/dL", male:[70,100], female:[70,100], critLow:50, critHigh:500, info:"Blood sugar — diabetes and metabolic monitoring." },
+    "Calcium": { unit:"mg/dL", male:[8.5,10.5], female:[8.5,10.5], critLow:7.0, critHigh:13.0, info:"Essential for bone, muscle contraction, neural signaling." },
+  },
+  CMP: {
+    "Sodium": { unit:"mEq/L", male:[136,145], female:[136,145], critLow:120, critHigh:160, info:"Primary extracellular cation." },
+    "Potassium": { unit:"mEq/L", male:[3.5,5.0], female:[3.5,5.0], critLow:3.0, critHigh:6.0, info:"Primary intracellular cation." },
+    "Chloride": { unit:"mEq/L", male:[98,107], female:[98,107], critLow:80, critHigh:120, info:"Primary extracellular anion." },
+    "Bicarbonate": { unit:"mEq/L", male:[22,29], female:[22,29], critLow:15, critHigh:40, info:"Acid-base buffer." },
+    "BUN": { unit:"mg/dL", male:[7,20], female:[7,20], critLow:null, critHigh:100, info:"Kidney function marker." },
+    "Creatinine": { unit:"mg/dL", male:[0.7,1.3], female:[0.5,1.1], critLow:null, critHigh:10, info:"Primary kidney function marker." },
+    "Glucose": { unit:"mg/dL", male:[70,100], female:[70,100], critLow:50, critHigh:500, info:"Blood sugar level." },
+    "Calcium": { unit:"mg/dL", male:[8.5,10.5], female:[8.5,10.5], critLow:7.0, critHigh:13.0, info:"Bone and muscle function." },
+    "Total Protein": { unit:"g/dL", male:[6.0,8.3], female:[6.0,8.3], critLow:null, critHigh:null, info:"Total serum proteins — nutrition and liver function." },
+    "Albumin": { unit:"g/dL", male:[3.5,5.0], female:[3.5,5.0], critLow:2.0, critHigh:null, info:"Major plasma protein — nutrition and liver synthesis." },
+    "Total Bilirubin": { unit:"mg/dL", male:[0.2,1.2], female:[0.2,1.0], critLow:null, critHigh:15, info:"Bilirubin — liver function and hemolysis marker." },
+    "ALT": { unit:"U/L", male:[7,56], female:[7,45], critLow:null, critHigh:300, info:"Liver-specific enzyme — liver cell damage indicator." },
+    "AST": { unit:"U/L", male:[10,40], female:[10,35], critLow:null, critHigh:500, info:"Enzyme in liver and muscle — liver and cardiac damage." },
+    "Alkaline Phosphatase": { unit:"U/L", male:[44,147], female:[38,126], critLow:null, critHigh:500, info:"Bone, liver, and bile duct enzyme." },
+  },
+  LFT: {
+    "Total Bilirubin": { unit:"mg/dL", male:[0.2,1.2], female:[0.2,1.0], critLow:null, critHigh:15, info:"Total bilirubin — liver excretory function." },
+    "Direct Bilirubin": { unit:"mg/dL", male:[0.0,0.3], female:[0.0,0.3], critLow:null, critHigh:null, info:"Conjugated bilirubin — bile duct patency." },
+    "Indirect Bilirubin": { unit:"mg/dL", male:[0.2,0.8], female:[0.2,0.8], critLow:null, critHigh:null, info:"Unconjugated bilirubin — hemolysis marker." },
+    "ALT": { unit:"U/L", male:[7,56], female:[7,45], critLow:null, critHigh:300, info:"Alanine aminotransferase — hepatocellular damage." },
+    "AST": { unit:"U/L", male:[10,40], female:[10,35], critLow:null, critHigh:500, info:"Aspartate aminotransferase — liver and muscle damage." },
+    "Alkaline Phosphatase": { unit:"U/L", male:[44,147], female:[38,126], critLow:null, critHigh:500, info:"ALP — bone, liver, and biliary enzyme." },
+    "GGT": { unit:"U/L", male:[8,61], female:[5,36], critLow:null, critHigh:null, info:"Gamma-glutamyl transferase — bile duct and alcohol marker." },
+    "Total Protein": { unit:"g/dL", male:[6.0,8.3], female:[6.0,8.3], critLow:null, critHigh:null, info:"Indicator of liver synthetic function." },
+    "Albumin": { unit:"g/dL", male:[3.5,5.0], female:[3.5,5.0], critLow:2.0, critHigh:null, info:"Liver synthesis marker — nutritional status." },
+  },
+  LIPID: {
+    "Total Cholesterol": { unit:"mg/dL", male:[0,200], female:[0,200], critLow:null, critHigh:300, info:"Total cholesterol — cardiovascular risk marker." },
+    "LDL": { unit:"mg/dL", male:[0,100], female:[0,100], critLow:null, critHigh:190, info:"'Bad' cholesterol — primary atherogenic lipoprotein." },
+    "HDL": { unit:"mg/dL", male:[40,60], female:[50,60], critLow:null, critHigh:null, info:"'Good' cholesterol — cardioprotective lipoprotein." },
+    "Triglycerides": { unit:"mg/dL", male:[0,150], female:[0,150], critLow:null, critHigh:500, info:"Blood fats — metabolic and cardiovascular risk." },
+    "Non-HDL Cholesterol": { unit:"mg/dL", male:[0,130], female:[0,130], critLow:null, critHigh:null, info:"Total cholesterol minus HDL — atherogenic burden." },
+    "Cholesterol/HDL Ratio": { unit:"ratio", male:[0,5], female:[0,4.5], critLow:null, critHigh:7, info:"Cardiovascular risk ratio." },
+  },
+  THYROID: {
+    "TSH": { unit:"mIU/L", male:[0.4,4.0], female:[0.4,4.0], critLow:0.1, critHigh:10, info:"Thyroid stimulating hormone — pituitary control of thyroid." },
+    "Free T4": { unit:"ng/dL", male:[0.8,1.8], female:[0.8,1.8], critLow:null, critHigh:null, info:"Free thyroxine — active thyroid hormone." },
+    "Free T3": { unit:"pg/mL", male:[2.3,4.1], female:[2.3,4.1], critLow:null, critHigh:null, info:"Free triiodothyronine — most active thyroid hormone." },
+    "Total T4": { unit:"µg/dL", male:[5.0,12.0], female:[5.0,12.0], critLow:null, critHigh:null, info:"Total thyroxine including bound fraction." },
+    "Anti-TPO": { unit:"IU/mL", male:[0,35], female:[0,35], critLow:null, critHigh:null, info:"Anti-thyroid peroxidase antibody — autoimmune thyroid." },
+  },
+  COAG: {
+    "PT": { unit:"seconds", male:[11,14], female:[11,14], critLow:null, critHigh:25, info:"Prothrombin time — extrinsic coagulation pathway." },
+    "INR": { unit:"ratio", male:[0.9,1.1], female:[0.9,1.1], critLow:null, critHigh:5, info:"International normalized ratio — standardized PT." },
+    "APTT": { unit:"seconds", male:[25,35], female:[25,35], critLow:null, critHigh:60, info:"Activated partial thromboplastin time — intrinsic pathway." },
+    "Fibrinogen": { unit:"mg/dL", male:[200,400], female:[200,400], critLow:100, critHigh:700, info:"Clotting factor — thrombosis and fibrinolysis." },
+    "D-Dimer": { unit:"µg/mL FEU", male:[0,0.5], female:[0,0.5], critLow:null, critHigh:null, info:"Fibrin degradation product — DVT/PE screening." },
+    "Thrombin Time": { unit:"seconds", male:[14,20], female:[14,20], critLow:null, critHigh:null, info:"Thrombin time — final common pathway." },
+  },
+  ABG: {
+    "pH": { unit:"", male:[7.35,7.45], female:[7.35,7.45], critLow:7.2, critHigh:7.6, info:"Blood acidity — respiratory and metabolic acid-base balance." },
+    "PaO2": { unit:"mmHg", male:[80,100], female:[80,100], critLow:60, critHigh:null, info:"Partial pressure of oxygen — oxygenation adequacy." },
+    "PaCO2": { unit:"mmHg", male:[35,45], female:[35,45], critLow:20, critHigh:70, info:"Partial pressure of CO2 — respiratory component." },
+    "HCO3": { unit:"mEq/L", male:[22,26], female:[22,26], critLow:15, critHigh:40, info:"Bicarbonate — metabolic component of acid-base." },
+    "SaO2": { unit:"%", male:[95,100], female:[95,100], critLow:90, critHigh:null, info:"Oxygen saturation — hemoglobin oxygen binding." },
+    "Base Excess": { unit:"mEq/L", male:[-2,2], female:[-2,2], critLow:-10, critHigh:10, info:"Base excess/deficit — metabolic acid-base status." },
+  },
+  IRON: {
+    "Serum Iron": { unit:"µg/dL", male:[60,170], female:[50,170], critLow:null, critHigh:null, info:"Serum iron — transport iron level." },
+    "TIBC": { unit:"µg/dL", male:[250,370], female:[250,370], critLow:null, critHigh:null, info:"Total iron binding capacity — transferrin capacity." },
+    "Transferrin Saturation": { unit:"%", male:[20,50], female:[15,50], critLow:null, critHigh:null, info:"Percentage of transferrin bound with iron." },
+    "Ferritin": { unit:"ng/mL", male:[12,300], female:[12,150], critLow:null, critHigh:null, info:"Iron storage protein — total body iron stores." },
+    "Transferrin": { unit:"mg/dL", male:[200,360], female:[200,360], critLow:null, critHigh:null, info:"Iron transport protein." },
+  },
+  URINALYSIS: {
+    "Specific Gravity": { unit:"", male:[1.005,1.030], female:[1.005,1.030], critLow:null, critHigh:null, info:"Concentration of urine — kidney concentrating ability." },
+    "pH (Urine)": { unit:"", male:[4.5,8.0], female:[4.5,8.0], critLow:null, critHigh:null, info:"Urine acidity — acid-base status and UTI indicator." },
+    "Protein (Urine)": { unit:"mg/dL", male:[0,14], female:[0,14], critLow:null, critHigh:null, info:"Urine protein — glomerular filtration integrity." },
+    "Glucose (Urine)": { unit:"mg/dL", male:[0,15], female:[0,15], critLow:null, critHigh:null, info:"Urine glucose — diabetes and renal threshold." },
+    "Creatinine (Urine)": { unit:"mg/dL", male:[40,300], female:[30,250], critLow:null, critHigh:null, info:"Urine creatinine — specimen adequacy and GFR estimation." },
+    "Microalbumin": { unit:"mg/g creat", male:[0,30], female:[0,30], critLow:null, critHigh:null, info:"Microalbuminuria — early diabetic nephropathy." },
+  },
+  CARDIAC: {
+    "Troponin I": { unit:"ng/mL", male:[0,0.04], female:[0,0.04], critLow:null, critHigh:null, info:"Cardiac troponin I — highly specific for myocardial injury." },
+    "Troponin T": { unit:"ng/mL", male:[0,0.01], female:[0,0.01], critLow:null, critHigh:null, info:"Cardiac troponin T — myocardial necrosis marker." },
+    "CK-MB": { unit:"ng/mL", male:[0,5], female:[0,5], critLow:null, critHigh:null, info:"Creatine kinase MB fraction — cardiac and skeletal muscle." },
+    "BNP": { unit:"pg/mL", male:[0,100], female:[0,100], critLow:null, critHigh:null, info:"B-type natriuretic peptide — heart failure marker." },
+    "NT-proBNP": { unit:"pg/mL", male:[0,125], female:[0,125], critLow:null, critHigh:null, info:"N-terminal proBNP — heart failure biomarker." },
+    "Myoglobin": { unit:"ng/mL", male:[0,90], female:[0,75], critLow:null, critHigh:null, info:"Muscle protein released in myocardial injury." },
+  },
+  INFLAMMATORY: {
+    "CRP": { unit:"mg/L", male:[0,5], female:[0,5], critLow:null, critHigh:null, info:"C-reactive protein — acute phase inflammatory marker." },
+    "High-Sensitivity CRP": { unit:"mg/L", male:[0,1], female:[0,1], critLow:null, critHigh:null, info:"hsCRP — cardiovascular risk stratification." },
+    "ESR": { unit:"mm/hr", male:[0,20], female:[0,30], critLow:null, critHigh:null, info:"Erythrocyte sedimentation rate — nonspecific inflammation." },
+    "Procalcitonin": { unit:"ng/mL", male:[0,0.25], female:[0,0.25], critLow:null, critHigh:null, info:"Procalcitonin — bacterial sepsis biomarker." },
+    "Fibrinogen": { unit:"mg/dL", male:[200,400], female:[200,400], critLow:null, critHigh:null, info:"Acute phase protein — inflammation and coagulation." },
+    "IL-6": { unit:"pg/mL", male:[0,7], female:[0,7], critLow:null, critHigh:null, info:"Interleukin-6 — pro-inflammatory cytokine." },
+  },
+};
+
+// ========================================
+// CLINICAL COMMENTARY
+// ========================================
+function getClinicalInsight(panel, test, status, value) {
+  const key = `${panel}_${test}`;
+  const insights = {
+    "CBC_Hemoglobin_LOW": "Low hemoglobin indicates anemia. Consider further workup: iron studies, B12/folate, reticulocyte count. Common causes include iron deficiency, chronic disease, hemolysis, or blood loss.",
+    "CBC_Hemoglobin_HIGH": "Elevated hemoglobin (erythrocytosis). Consider dehydration, polycythemia vera, chronic hypoxia, or EPO-secreting tumors.",
+    "CBC_WBC_LOW": "Leukopenia — reduced infection-fighting capacity. Consider bone marrow suppression, viral infection, autoimmune conditions, or medication effects.",
+    "CBC_WBC_HIGH": "Leukocytosis — may indicate infection, inflammation, stress, or (if extreme) leukemia. Differential count is essential.",
+    "CBC_Platelets_LOW": "Thrombocytopenia — increased bleeding risk. Consider ITP, drug effects, DIC, hypersplenism, or bone marrow failure.",
+    "CBC_Platelets_HIGH": "Thrombocytosis — increased clotting risk. May be reactive (infection, iron deficiency) or primary (essential thrombocythemia).",
+    "BMP_Sodium_LOW": "Hyponatremia — consider SIADH, heart failure, cirrhosis, hypothyroidism, or excessive water intake. Assess volume status.",
+    "BMP_Sodium_HIGH": "Hypernatremia — usually indicates free water deficit. Consider diabetes insipidus, excessive sodium intake, or water loss.",
+    "BMP_Potassium_LOW": "Hypokalemia — cardiac arrhythmia risk. Consider diuretics, vomiting, diarrhea, alkalosis, or insufficient dietary intake.",
+    "BMP_Potassium_HIGH": "Hyperkalemia — critical cardiac risk. Rule out hemolysis, renal failure, ACE inhibitors, hypoaldosteronism.",
+    "BMP_Glucose_LOW": "Hypoglycemia — assess for insulin excess, Addison's disease, insulinoma, or liver failure.",
+    "BMP_Glucose_HIGH": "Hyperglycemia — consider diabetes mellitus, stress hyperglycemia, steroid use, or pancreatic disease.",
+    "BMP_Creatinine_HIGH": "Elevated creatinine indicates impaired renal function. Assess GFR, check BUN/Cr ratio, consider acute vs chronic kidney disease.",
+    "LFT_ALT_HIGH": "Elevated ALT indicates hepatocellular damage. Degree of elevation guides differential: mild (fatty liver, medications), moderate (hepatitis), severe (acute hepatitis, ischemia).",
+    "LFT_AST_HIGH": "Elevated AST suggests liver or muscle damage. AST/ALT ratio >2 suggests alcoholic liver disease; <1 suggests viral hepatitis.",
+    "LIPID_LDL_HIGH": "Elevated LDL ('bad cholesterol') increases atherosclerotic cardiovascular disease risk. Consider lifestyle modification and statin therapy based on total cardiovascular risk profile.",
+    "LIPID_HDL_LOW": "Low HDL ('good cholesterol') increases cardiovascular risk. Causes include sedentary lifestyle, obesity, smoking, and metabolic syndrome.",
+    "THYROID_TSH_LOW": "Low TSH suggests hyperthyroidism or pituitary suppression. Check free T4 and T3. Consider Graves' disease, toxic nodular goiter.",
+    "THYROID_TSH_HIGH": "Elevated TSH indicates hypothyroidism (primary) or TSH-secreting pituitary tumor (rare). Check free T4.",
+    "COAG_INR_HIGH": "Elevated INR indicates prolonged clotting time. Consider warfarin effect, liver disease, vitamin K deficiency, or DIC.",
+    "ABG_pH_LOW": "Acidosis (pH <7.35). Assess PaCO2 and HCO3 to determine if respiratory, metabolic, or mixed. Calculate anion gap if metabolic.",
+    "ABG_pH_HIGH": "Alkalosis (pH >7.45). Assess PaCO2 and HCO3. Respiratory alkalosis (hyperventilation) or metabolic alkalosis (vomiting, diuretics).",
+  };
+
+  const lookupKey = `${panel}_${test}_${status}`;
+  if (insights[lookupKey]) return insights[lookupKey];
+
+  // Generic insights
+  if (status === "CRITICAL LOW" || status === "CRITICAL HIGH") {
+    return `Critical value requires immediate clinical attention. Verify result with repeat testing if clinically incongruous. Notify appropriate personnel per laboratory protocol.`;
+  }
+  if (status === "LOW") return `This result is below the reference range. Consider clinical context, patient history, and whether further workup is indicated.`;
+  if (status === "HIGH") return `This result is above the reference range. Consider clinical context, patient history, and confirmatory testing if needed.`;
+  return `This result is within the normal reference range for the patient's demographic. Continue routine monitoring as clinically indicated.`;
+}
+
+// ========================================
+// TAB NAVIGATION
+// ========================================
+function showTab(name) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  const tabs = document.querySelectorAll('.nav-tab');
+  const labels = ['dashboard','interpret','calculators','batch','reference','info'];
+  const idx = labels.indexOf(name);
+  if(idx >= 0) tabs[idx].classList.add('active');
+  if(name === 'reference') renderReferenceTable();
+}
+
+// ========================================
+// CLOCK
+// ========================================
+function updateClock() {
+  const n = new Date();
+  document.getElementById('clock').textContent =
+    String(n.getHours()).padStart(2,'0')+':'+
+    String(n.getMinutes()).padStart(2,'0')+':'+
+    String(n.getSeconds()).padStart(2,'0');
+}
+setInterval(updateClock, 1000); updateClock();
+
+// ========================================
+// INTERPRET TAB
+// ========================================
+function updateTests() {
+  const panel = document.getElementById('panelSelect').value;
+  const sel = document.getElementById('testSelect');
+  sel.innerHTML = '';
+  if (!panel || !LAB_DATA[panel]) {
+    sel.innerHTML = '<option>-- Select Panel First --</option>'; return;
+  }
+  Object.keys(LAB_DATA[panel]).forEach(t => {
+    const o = document.createElement('option');
+    o.value = t; o.textContent = t;
+    sel.appendChild(o);
+  });
+}
+
+function interpretTest() {
+  const panel = document.getElementById('panelSelect').value;
+  const test  = document.getElementById('testSelect').value;
+  const val   = parseFloat(document.getElementById('testValue').value);
+  const sex   = document.getElementById('patientSex').value;
+
+  if (!panel || !test || isNaN(val)) {
+    alert('Please fill in all fields with valid values.'); return;
+  }
+
+  const data = LAB_DATA[panel] && LAB_DATA[panel][test];
+  if (!data) { alert('Test not found.'); return; }
+
+  const range = sex === 'female' ? data.female : data.male;
+  const [lo, hi] = range;
+
+  let status, cls;
+  if (data.critLow !== null && val <= data.critLow) { status = 'CRITICAL LOW'; cls = 'result-critical'; }
+  else if (data.critHigh !== null && val >= data.critHigh) { status = 'CRITICAL HIGH'; cls = 'result-critical'; }
+  else if (val < lo) { status = 'LOW'; cls = 'result-danger'; }
+  else if (val > hi) { status = 'HIGH'; cls = 'result-warning'; }
+  else { status = 'NORMAL'; cls = 'result-normal'; }
+
+  const insight = getClinicalInsight(panel, test, status, val);
+
+  const div = document.getElementById('result-display');
+  div.innerHTML = `
+<span class="result-header">🔬 TEST INTERPRETATION REPORT</span>
+<span class="result-dim">════════════════════════════════════════</span>
+
+<span class="result-dim">Panel   :</span> <span class="result-value">${panel}</span>
+<span class="result-dim">Test    :</span> <span class="result-value">${test}</span>
+<span class="result-dim">Value   :</span> <span class="result-value">${val} ${data.unit}</span>
+<span class="result-dim">Sex     :</span> <span class="result-value">${sex.charAt(0).toUpperCase()+sex.slice(1)}</span>
+<span class="result-dim">Ref Rng :</span> <span class="result-value">${lo} – ${hi} ${data.unit}</span>
+${data.critLow !== null ? `<span class="result-dim">Crit Low:</span> <span class="result-danger">${data.critLow} ${data.unit}</span>` : ''}
+${data.critHigh !== null ? `<span class="result-dim">Crit Hi :</span> <span class="result-danger">${data.critHigh} ${data.unit}</span>` : ''}
+
+<span class="result-dim">Status  :</span> <span class="${cls}">● ${status}</span>
+
+<span class="result-dim">────────────────────────────────────────</span>
+<span class="result-dim">About   :</span> ${data.info}`;
+
+  // Badge
+  const badgeEl = document.getElementById('result-badge');
+  const badgeMap = {
+    'NORMAL':'badge-normal', 'LOW':'badge-low', 'HIGH':'badge-high',
+    'CRITICAL LOW':'badge-critical', 'CRITICAL HIGH':'badge-critical'
+  };
+  badgeEl.innerHTML = `<span class="report-badge ${badgeMap[status]}">${status}</span>`;
+
+  // AI insight
+  document.getElementById('ai-text').textContent = insight;
+  document.getElementById('ai-insight').style.display = 'block';
+}
+
+function clearInterpret() {
+  document.getElementById('result-display').innerHTML = '<span class="result-dim">↑ Select a panel, test, and value above, then click Interpret.</span>';
+  document.getElementById('result-badge').innerHTML = '';
+  document.getElementById('ai-insight').style.display = 'none';
+  document.getElementById('testValue').value = '';
+}
+
+function printReport() {
+  const panel = document.getElementById('panelSelect').value;
+  const test  = document.getElementById('testSelect').value;
+  const val   = document.getElementById('testValue').value;
+  const sex   = document.getElementById('patientSex').value;
+  if (!panel || !test || !val) { alert('Interpret a test first.'); return; }
+
+  const content = document.getElementById('result-display').innerHTML;
+  const insight = document.getElementById('ai-text').textContent;
+  const now = new Date().toLocaleString();
+
+  document.getElementById('reportContent').innerHTML = `
+    <div style="color:var(--accent);font-size:16px;font-weight:700;margin-bottom:16px;">LabLens Pro — Educational Lab Report</div>
+    <div style="margin-bottom:8px;"><b>Date/Time:</b> ${now}</div>
+    <div style="margin-bottom:16px;"><b>Patient Sex:</b> ${sex}</div>
+    <div style="white-space:pre-wrap;margin-bottom:16px;">${content}</div>
+    <div style="border-top:1px solid var(--border);padding-top:12px;">
+      <div style="color:var(--accent2);font-weight:700;margin-bottom:8px;">AI CLINICAL INSIGHT</div>
+      <div>${insight}</div>
+    </div>
+    <div style="margin-top:16px;font-size:11px;color:var(--text3);">⚠️ EDUCATIONAL TOOL ONLY — Not for clinical use.</div>
+  `;
+  document.getElementById('reportModal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('reportModal').classList.remove('open');
+}
+
+// ========================================
+// BATCH PROCESSING
+// ========================================
+function processBatch() {
+  const lines = document.getElementById('batchInput').value.trim().split('\n');
+  if (!lines.length || !lines[0]) { alert('No input to process.'); return; }
+
+  let html = `<span class="result-header">📊 BATCH PROCESSING RESULTS</span>
+<span class="result-dim">Processed: ${new Date().toLocaleTimeString()}</span>
+<span class="result-dim">════════════════════════════════════════</span>
+`;
+
+  let n=0, norm=0, abn=0, crit=0;
+
+  lines.forEach((raw, i) => {
+    const line = raw.trim();
+    if (!line || line.startsWith('#')) return;
+    const parts = line.split(',').map(s => s.trim());
+    if (parts.length < 3) { html += `<span class="result-danger">❌ Line ${i+1}: Invalid format (need PANEL, TEST, VALUE)</span>\n`; return; }
+
+    const [panel, test, valueStr, sexOpt] = parts;
+    const val = parseFloat(valueStr);
+    const sex = sexOpt === 'female' ? 'female' : 'male';
+    if (isNaN(val)) { html += `<span class="result-danger">❌ Line ${i+1}: Non-numeric value "${valueStr}"</span>\n`; return; }
+
+    const pData = LAB_DATA[panel.toUpperCase()];
+    if (!pData) { html += `<span class="result-warning">⚠️  Line ${i+1}: Panel "${panel}" not found</span>\n`; return; }
+    const tData = pData[test];
+    if (!tData) { html += `<span class="result-warning">⚠️  Line ${i+1}: Test "${test}" not found in ${panel}</span>\n`; return; }
+
+    const range = sex === 'female' ? tData.female : tData.male;
+    const [lo, hi] = range;
+    let status, cls, icon;
+
+    if (tData.critLow !== null && val <= tData.critLow) { status='CRITICAL LOW'; cls='result-critical'; icon='🚨'; crit++; }
+    else if (tData.critHigh !== null && val >= tData.critHigh) { status='CRITICAL HIGH'; cls='result-critical'; icon='🚨'; crit++; }
+    else if (val < lo) { status='LOW'; cls='result-danger'; icon='⬇️'; abn++; }
+    else if (val > hi) { status='HIGH'; cls='result-warning'; icon='⬆️'; abn++; }
+    else { status='NORMAL'; cls='result-normal'; icon='✅'; norm++; }
+
+    n++;
+    html += `${icon} <span class="result-dim">${panel}/${test}:</span> <span class="result-value">${val} ${tData.unit}</span>  →  <span class="${cls}">${status}</span>  <span class="result-dim">[${lo}–${hi}]</span>\n`;
+  });
+
+  html += `
+<span class="result-dim">════════════════════════════════════════</span>
+<span class="result-normal">✅ Normal: ${norm}</span>  <span class="result-warning">⚠️  Abnormal: ${abn}</span>  <span class="result-critical">🚨 Critical: ${crit}</span>  <span class="result-dim">Total: ${n}</span>`;
+
+  document.getElementById('batchOutput').innerHTML = html;
+}
+
+function loadExample() {
+  document.getElementById('batchInput').value =
+`# Example batch — CBC + BMP + Lipid
+CBC, Hemoglobin, 10.5
+CBC, WBC, 14.2
+CBC, Platelets, 320
+CBC, Neutrophils %, 78
+CBC, Lymphocytes %, 15
+BMP, Sodium, 128
+BMP, Potassium, 3.1
+BMP, Glucose, 540
+BMP, Creatinine, 2.8
+LIPID, LDL, 175
+LIPID, HDL, 35
+LIPID, Triglycerides, 280
+LFT, ALT, 120
+LFT, AST, 95
+THYROID, TSH, 0.08`;
+}
+
+function clearBatch() {
+  document.getElementById('batchInput').value = '';
+  document.getElementById('batchOutput').innerHTML = '<span class="result-dim">Batch results will appear here.</span>';
+}
+
+// ========================================
+// CALCULATORS
+// ========================================
+let currentCalc = 'egfr';
+
+const CALC_DEFS = {
+  egfr: {
+    title: '🧬 eGFR Calculator (CKD-EPI)',
+    fields: `
+      <div class="form-group"><label class="form-label">Age (years)</label><input class="form-control" id="c_age" type="number" value="65"></div>
+      <div class="form-group"><label class="form-label">Creatinine (mg/dL)</label><input class="form-control" id="c_creat" type="number" step="0.01" value="1.8"></div>
+      <div class="form-check"><input type="checkbox" id="c_female"><label for="c_female">Female</label></div>
+      <div class="form-check"><input type="checkbox" id="c_black"><label for="c_black">African American</label></div>
+    `
+  },
+  corrected_na: {
+    title: '⚖️ Corrected Sodium (Katz Formula)',
+    fields: `
+      <div class="form-group"><label class="form-label">Measured Sodium (mEq/L)</label><input class="form-control" id="c_na" type="number" value="130"></div>
+      <div class="form-group"><label class="form-label">Glucose (mg/dL)</label><input class="form-control" id="c_glu" type="number" value="450"></div>
+    `
+  },
+  ldl: {
+    title: '🩸 LDL Cholesterol (Friedewald)',
+    fields: `
+      <div class="form-group"><label class="form-label">Total Cholesterol (mg/dL)</label><input class="form-control" id="c_tc" type="number" value="220"></div>
+      <div class="form-group"><label class="form-label">HDL (mg/dL)</label><input class="form-control" id="c_hdl" type="number" value="45"></div>
+      <div class="form-group"><label class="form-label">Triglycerides (mg/dL)</label><input class="form-control" id="c_tg" type="number" value="150"></div>
+    `
+  },
+  bmi: {
+    title: '📏 BMI Calculator',
+    fields: `
+      <div class="form-group"><label class="form-label">Weight (kg)</label><input class="form-control" id="c_wt" type="number" value="85"></div>
+      <div class="form-group"><label class="form-label">Height (cm)</label><input class="form-control" id="c_ht" type="number" value="175"></div>
+    `
+  },
+  corrected_ca: {
+    title: '🦴 Corrected Calcium',
+    fields: `
+      <div class="form-group"><label class="form-label">Measured Calcium (mg/dL)</label><input class="form-control" id="c_ca" type="number" step="0.1" value="8.0"></div>
+      <div class="form-group"><label class="form-label">Albumin (g/dL)</label><input class="form-control" id="c_alb" type="number" step="0.1" value="3.0"></div>
+    `
+  },
+  anion_gap: {
+    title: '⚡ Anion Gap',
+    fields: `
+      <div class="form-group"><label class="form-label">Sodium (mEq/L)</label><input class="form-control" id="c_na2" type="number" value="140"></div>
+      <div class="form-group"><label class="form-label">Chloride (mEq/L)</label><input class="form-control" id="c_cl" type="number" value="105"></div>
+      <div class="form-group"><label class="form-label">Bicarbonate (mEq/L)</label><input class="form-control" id="c_hco3" type="number" value="24"></div>
+    `
+  },
+  meld: {
+    title: '💚 MELD Score (Liver Disease)',
+    fields: `
+      <div class="form-group"><label class="form-label">Creatinine (mg/dL)</label><input class="form-control" id="c_mcreat" type="number" step="0.1" value="1.5"></div>
+      <div class="form-group"><label class="form-label">Bilirubin (mg/dL)</label><input class="form-control" id="c_mbili" type="number" step="0.1" value="3.2"></div>
+      <div class="form-group"><label class="form-label">INR</label><input class="form-control" id="c_minr" type="number" step="0.1" value="1.8"></div>
+    `
+  },
+  chads: {
+    title: '🧠 CHADS₂-VASc Score',
+    fields: `
+      <div class="form-group"><label class="form-label">Age (years)</label><input class="form-control" id="c_cage" type="number" value="75"></div>
+      <div class="form-check"><input type="checkbox" id="c_cfemale"><label for="c_cfemale">Female sex</label></div>
+      <div class="form-check"><input type="checkbox" id="c_cchf"><label for="c_cchf">Heart Failure</label></div>
+      <div class="form-check"><input type="checkbox" id="c_chtn"><label for="c_chtn">Hypertension</label></div>
+      <div class="form-check"><input type="checkbox" id="c_cdm"><label for="c_cdm">Diabetes mellitus</label></div>
+      <div class="form-check"><input type="checkbox" id="c_cstroke"><label for="c_cstroke">Stroke / TIA / Thromboembolism</label></div>
+      <div class="form-check"><input type="checkbox" id="c_cvasc"><label for="c_cvasc">Vascular disease (MI, PAD, aortic plaque)</label></div>
+    `
+  },
+  ibw: {
+    title: '⚖️ Ideal Body Weight (Devine)',
+    fields: `
+      <div class="form-group"><label class="form-label">Height (cm)</label><input class="form-control" id="c_ibwht" type="number" value="170"></div>
+      <div class="form-check"><input type="radio" name="ibwsex" id="ibw_male" checked><label for="ibw_male">Male</label></div>
+      <div class="form-check"><input type="radio" name="ibwsex" id="ibw_female"><label for="ibw_female">Female</label></div>
+    `
+  },
+  osmolality: {
+    title: '🧪 Serum Osmolality',
+    fields: `
+      <div class="form-group"><label class="form-label">Sodium (mEq/L)</label><input class="form-control" id="c_osna" type="number" value="140"></div>
+      <div class="form-group"><label class="form-label">Glucose (mg/dL)</label><input class="form-control" id="c_osglu" type="number" value="100"></div>
+      <div class="form-group"><label class="form-label">BUN (mg/dL)</label><input class="form-control" id="c_osbun" type="number" value="15"></div>
+      <div class="form-group"><label class="form-label">Ethanol (mg/dL) — optional</label><input class="form-control" id="c_osetoh" type="number" value="0"></div>
+    `
+  },
+  na_deficit: {
+    title: '💧 Sodium Deficit',
+    fields: `
+      <div class="form-group"><label class="form-label">Weight (kg)</label><input class="form-control" id="c_ndwt" type="number" value="70"></div>
+      <div class="form-group"><label class="form-label">Current Sodium (mEq/L)</label><input class="form-control" id="c_ndna" type="number" value="120"></div>
+      <div class="form-group"><label class="form-label">Target Sodium (mEq/L)</label><input class="form-control" id="c_ndtgt" type="number" value="135"></div>
+      <div class="form-check"><input type="radio" name="ndsex" id="nd_male" checked><label for="nd_male">Male (TBW = 0.6 × weight)</label></div>
+      <div class="form-check"><input type="radio" name="ndsex" id="nd_female"><label for="nd_female">Female (TBW = 0.5 × weight)</label></div>
+    `
+  },
+  ast_alt: {
+    title: '🔬 AST/ALT Ratio (De Ritis)',
+    fields: `
+      <div class="form-group"><label class="form-label">AST (U/L)</label><input class="form-control" id="c_ast" type="number" value="40"></div>
+      <div class="form-group"><label class="form-label">ALT (U/L)</label><input class="form-control" id="c_alt" type="number" value="30"></div>
+    `
+  },
+  delta: {
+    title: '∆ Delta-Delta Gap',
+    fields: `
+      <div class="form-group"><label class="form-label">Anion Gap (mEq/L)</label><input class="form-control" id="c_dag" type="number" value="20"></div>
+      <div class="form-group"><label class="form-label">Bicarbonate (mEq/L)</label><input class="form-control" id="c_dhco3" type="number" value="18"></div>
+    `
+  },
+  albumin_ag: {
+    title: '🩸 Albumin-Corrected Anion Gap',
+    fields: `
+      <div class="form-group"><label class="form-label">Anion Gap (mEq/L)</label><input class="form-control" id="c_aag" type="number" value="12"></div>
+      <div class="form-group"><label class="form-label">Albumin (g/dL)</label><input class="form-control" id="c_aalb" type="number" step="0.1" value="3.0"></div>
+    `
+  }
+};
+
+function selectCalc(name, el) {
+  currentCalc = name;
+  document.querySelectorAll('.calc-item').forEach(i => i.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('calcTitle').textContent = CALC_DEFS[name].title;
+  document.getElementById('calcFields').innerHTML = CALC_DEFS[name].fields;
+  document.getElementById('calcResult').innerHTML = '<span class="result-dim">Results will appear here after calculation.</span>';
+}
+
+function openCalc(name) {
+  showTab('calculators');
+  const el = document.querySelector(`.calc-item[onclick*="${name}"]`);
+  if (el) selectCalc(name, el);
+}
+
+function clearCalc() {
+  document.getElementById('calcResult').innerHTML = '<span class="result-dim">Results will appear here after calculation.</span>';
+}
+
+function runCalc() {
+  const out = document.getElementById('calcResult');
+  const g = (id) => { const el = document.getElementById(id); return el ? parseFloat(el.value) : 0; };
+  const gc = (id) => { const el = document.getElementById(id); return el ? el.checked : false; };
+
+  try {
+    let html = '';
+
+    if (currentCalc === 'egfr') {
+      const age = g('c_age'), cr = g('c_creat');
+      const female = gc('c_female'), black = gc('c_black');
+      if (isNaN(age)||isNaN(cr)||age<=0||cr<=0) throw 'Enter valid age and creatinine.';
+      const kappa = female ? 0.7 : 0.9;
+      const alpha = female ? -0.329 : -0.411;
+      const ratio = cr / kappa;
+      let egfr = 141 * Math.pow(Math.min(ratio,1), alpha) * Math.pow(Math.max(ratio,1), -1.209) * Math.pow(0.993, age);
+      if (female) egfr *= 1.018;
+      if (black) egfr *= 1.159;
+      egfr = Math.round(egfr);
+      const stage = egfr>=90?'G1 (Normal/High)':egfr>=60?'G2 (Mildly decreased)':egfr>=45?'G3a (Mildly-mod decreased)':egfr>=30?'G3b (Mod-severely decreased)':egfr>=15?'G4 (Severely decreased)':'G5 (Kidney failure)';
+      const cls = egfr>=60?'result-normal':egfr>=30?'result-warning':'result-danger';
+      html = `<span class="result-header">🧬 eGFR RESULT</span>
+<span class="result-dim">────────────────</span>
+Age: ${age} yrs | Cr: ${cr} mg/dL | ${female?'Female':'Male'}${black?' | African American':''}
+
+<span class="result-dim">eGFR:</span> <span class="${cls}">${egfr} mL/min/1.73m²</span>
+<span class="result-dim">CKD Stage:</span> <span class="result-value">${stage}</span>
+
+${egfr>=60?'<span class="result-normal">✅ Normal kidney function</span>':egfr>=30?'<span class="result-warning">⚠️ Reduced kidney function — monitor closely</span>':'<span class="result-danger">🚨 Severely reduced kidney function</span>'}
+
+<span class="result-dim">Normal: ≥60 mL/min/1.73m²</span>`;
+    }
+
+    else if (currentCalc === 'corrected_na') {
+      const na = g('c_na'), glu = g('c_glu');
+      if (isNaN(na)||isNaN(glu)) throw 'Enter sodium and glucose.';
+      const corr = na + 0.024 * (glu - 100);
+      const cls = corr<135?'result-danger':corr>145?'result-warning':'result-normal';
+      html = `<span class="result-header">⚖️ CORRECTED SODIUM</span>
+<span class="result-dim">────────────────</span>
+Measured Na: ${na} mEq/L | Glucose: ${glu} mg/dL
+
+<span class="result-dim">Corrected Na:</span> <span class="${cls}">${corr.toFixed(1)} mEq/L</span>
+${corr<135?'<span class="result-danger">⬇️ Hyponatremia after correction</span>':corr>145?'<span class="result-warning">⬆️ Hypernatremia after correction</span>':'<span class="result-normal">✅ Normal after correction</span>'}
+
+<span class="result-dim">Formula: Na_corr = Na_measured + 0.024 × (Glucose − 100)</span>`;
+    }
+
+    else if (currentCalc === 'ldl') {
+      const tc = g('c_tc'), hdl = g('c_hdl'), tg = g('c_tg');
+      if (isNaN(tc)||isNaN(hdl)||isNaN(tg)) throw 'Enter all values.';
+      const ldl = tc - hdl - (tg/5);
+      const cls = ldl<100?'result-normal':ldl<160?'result-warning':'result-danger';
+      const interp = ldl<100?'✅ Optimal':ldl<130?'⚠️ Near optimal':ldl<160?'⚠️ Borderline high':ldl<190?'⚠️ High':'🚨 Very high';
+      html = `<span class="result-header">🩸 LDL CHOLESTEROL</span>
+<span class="result-dim">────────────────</span>
+Total Chol: ${tc} | HDL: ${hdl} | TG: ${tg} mg/dL
+
+<span class="result-dim">LDL:</span> <span class="${cls}">${ldl.toFixed(1)} mg/dL</span>
+${interp}
+
+<span class="result-dim">Formula: LDL = TC − HDL − TG/5 (Friedewald)
+Note: Invalid if TG > 400 mg/dL</span>`;
+    }
+
+    else if (currentCalc === 'bmi') {
+      const wt = g('c_wt'), ht = g('c_ht') / 100;
+      if (isNaN(wt)||isNaN(ht)||ht<=0) throw 'Enter weight and height.';
+      const bmi = wt / (ht * ht);
+      const cls = bmi>=18.5&&bmi<25?'result-normal':bmi<18.5||bmi>=30?'result-danger':'result-warning';
+      const cat = bmi<18.5?'Underweight':bmi<25?'Normal weight':bmi<30?'Overweight':bmi<35?'Obese Class I':bmi<40?'Obese Class II':'Obese Class III (Morbid)';
+      html = `<span class="result-header">📏 BMI RESULT</span>
+<span class="result-dim">────────────────</span>
+Weight: ${wt} kg | Height: ${ht*100} cm
+
+<span class="result-dim">BMI:</span> <span class="${cls}">${bmi.toFixed(1)} kg/m²</span>
+<span class="result-dim">Category:</span> <span class="result-value">${cat}</span>
+
+<span class="result-dim">Ranges: <18.5 Underweight | 18.5–24.9 Normal | 25–29.9 Overweight | ≥30 Obese</span>`;
+    }
+
+    else if (currentCalc === 'corrected_ca') {
+      const ca = g('c_ca'), alb = g('c_alb');
+      if (isNaN(ca)||isNaN(alb)) throw 'Enter calcium and albumin.';
+      const corr = ca + 0.8 * (4 - alb);
+      const cls = corr<8.5?'result-warning':corr>10.5?'result-warning':'result-normal';
+      html = `<span class="result-header">🦴 CORRECTED CALCIUM</span>
+<span class="result-dim">────────────────</span>
+Measured Ca: ${ca} mg/dL | Albumin: ${alb} g/dL
+
+<span class="result-dim">Corrected Ca:</span> <span class="${cls}">${corr.toFixed(1)} mg/dL</span>
+${corr<8.5?'<span class="result-warning">⬇️ Hypocalcemia</span>':corr>10.5?'<span class="result-warning">⬆️ Hypercalcemia</span>':'<span class="result-normal">✅ Normal calcium</span>'}
+
+<span class="result-dim">Formula: Ca_corr = Ca + 0.8 × (4 − Albumin)
+Normal: 8.5–10.5 mg/dL</span>`;
+    }
+
+    else if (currentCalc === 'anion_gap') {
+      const na = g('c_na2'), cl = g('c_cl'), hco3 = g('c_hco3');
+      if (isNaN(na)||isNaN(cl)||isNaN(hco3)) throw 'Enter all values.';
+      const ag = na - (cl + hco3);
+      const cls = ag>12?'result-danger':ag<8?'result-warning':'result-normal';
+      const interp = ag<8?'⬇️ Low anion gap':ag<=12?'✅ Normal':ag<=16?'⚠️ Slightly elevated':'🚨 High anion gap metabolic acidosis';
+      html = `<span class="result-header">⚡ ANION GAP</span>
+<span class="result-dim">────────────────</span>
+Na: ${na} | Cl: ${cl} | HCO₃: ${hco3} mEq/L
+
+<span class="result-dim">Anion Gap:</span> <span class="${cls}">${ag.toFixed(1)} mEq/L</span>
+${interp}
+
+<span class="result-dim">Formula: AG = Na − (Cl + HCO₃)
+Normal: 8–12 mEq/L</span>`;
+    }
+
+    else if (currentCalc === 'meld') {
+      const cr = Math.max(g('c_mcreat'), 1), bi = Math.max(g('c_mbili'), 1), inr = Math.max(g('c_minr'), 1);
+      if (isNaN(cr)||isNaN(bi)||isNaN(inr)) throw 'Enter all values.';
+      const meld = Math.round(3.78*Math.log(bi) + 11.2*Math.log(inr) + 9.57*Math.log(cr) + 6.43);
+      const cls = meld<10?'result-normal':meld<20?'result-warning':'result-danger';
+      const mort = meld<10?'Low (<10%) 90-day mortality':meld<20?'Moderate (~20%) 90-day mortality':meld<30?'High (~52%) 90-day mortality':'Very high (>70%) 90-day mortality';
+      html = `<span class="result-header">💚 MELD SCORE</span>
+<span class="result-dim">────────────────</span>
+Creatinine: ${cr} | Bilirubin: ${bi} | INR: ${inr}
+
+<span class="result-dim">MELD Score:</span> <span class="${cls}">${meld}</span>
+<span class="result-dim">Mortality Risk:</span> <span class="result-value">${mort}</span>
+
+<span class="result-dim">Used for liver transplant listing priority
+Values capped at 1 minimum per variable</span>`;
+    }
+
+    else if (currentCalc === 'chads') {
+      const age = g('c_cage');
+      if (isNaN(age)) throw 'Enter age.';
+      let score = 0;
+      if (age>=75) score+=2; else if(age>=65) score+=1;
+      if (gc('c_cfemale')) score+=1;
+      if (gc('c_cchf')) score+=1;
+      if (gc('c_chtn')) score+=1;
+      if (gc('c_cdm')) score+=1;
+      if (gc('c_cstroke')) score+=2;
+      if (gc('c_cvasc')) score+=1;
+      const riskTable = ['0%','1.3%','2.2%','3.2%','4.0%','6.7%','9.8%','9.6%','6.7%','15.2%'];
+      const risk = riskTable[Math.min(score,9)];
+      const rec = score>=2?'Anticoagulation recommended':score===1?'Consider anticoagulation':'No anticoagulation';
+      html = `<span class="result-header">🧠 CHADS₂-VASc SCORE</span>
+<span class="result-dim">────────────────</span>
+Age: ${age} yrs
+
+<span class="result-dim">Score:</span> <span class="${score>=2?'result-danger':score===1?'result-warning':'result-normal'}">${score}</span>
+<span class="result-dim">Annual Stroke Risk:</span> <span class="result-value">${risk}</span>
+<span class="result-dim">Recommendation:</span> <span class="result-value">${rec}</span>
+
+<span class="result-dim">Age ≥75=2pts | 65–74=1pt | Female=1pt
+CHF=1pt | HTN=1pt | DM=1pt | Stroke=2pts | Vasc=1pt</span>`;
+    }
+
+    else if (currentCalc === 'ibw') {
+      const ht = g('c_ibwht');
+      const male = document.getElementById('ibw_male')?.checked;
+      if (isNaN(ht)||ht<=0) throw 'Enter valid height.';
+      const ibw = male ? 50 + 2.3*((ht-152.4)/2.54) : 45.5 + 2.3*((ht-152.4)/2.54);
+      html = `<span class="result-header">⚖️ IDEAL BODY WEIGHT</span>
+<span class="result-dim">────────────────</span>
+Height: ${ht} cm | ${male?'Male':'Female'}
+
+<span class="result-dim">IBW:</span> <span class="result-normal">${ibw.toFixed(1)} kg</span>
+
+<span class="result-dim">Devine Formula:
+Male: 50 + 2.3 × (height_in − 60)
+Female: 45.5 + 2.3 × (height_in − 60)</span>`;
+    }
+
+    else if (currentCalc === 'osmolality') {
+      const na = g('c_osna'), glu = g('c_osglu'), bun = g('c_osbun'), etoh = g('c_osetoh')||0;
+      if (isNaN(na)||isNaN(glu)||isNaN(bun)) throw 'Enter required values.';
+      const osm = 2*na + glu/18 + bun/2.8 + etoh/4.6;
+      const cls = osm>=275&&osm<=295?'result-normal':osm<275?'result-warning':'result-warning';
+      html = `<span class="result-header">🧪 SERUM OSMOLALITY</span>
+<span class="result-dim">────────────────</span>
+Na: ${na} | Glucose: ${glu} | BUN: ${bun}${etoh?' | EtOH: '+etoh:''}
+
+<span class="result-dim">Calculated Osmolality:</span> <span class="${cls}">${osm.toFixed(0)} mOsm/kg</span>
+${osm>=275&&osm<=295?'<span class="result-normal">✅ Normal</span>':osm<275?'<span class="result-warning">⬇️ Hypoosmolar</span>':'<span class="result-warning">⬆️ Hyperosmolar</span>'}
+
+<span class="result-dim">Normal: 275–295 mOsm/kg
+Formula: 2×Na + Glucose/18 + BUN/2.8 + EtOH/4.6</span>`;
+    }
+
+    else if (currentCalc === 'na_deficit') {
+      const wt = g('c_ndwt'), naCurr = g('c_ndna'), naTgt = g('c_ndtgt');
+      const male = document.getElementById('nd_male')?.checked;
+      if (isNaN(wt)||isNaN(naCurr)||isNaN(naTgt)) throw 'Enter all values.';
+      const tbw = male ? 0.6*wt : 0.5*wt;
+      const deficit = tbw * (naTgt - naCurr);
+      html = `<span class="result-header">💧 SODIUM DEFICIT</span>
+<span class="result-dim">────────────────</span>
+Weight: ${wt} kg | Current Na: ${naCurr} | Target Na: ${naTgt} mEq/L
+
+<span class="result-dim">Total Body Water:</span> <span class="result-value">${tbw.toFixed(1)} L</span>
+<span class="result-dim">Sodium Deficit:</span> <span class="result-warning">${deficit.toFixed(0)} mEq</span>
+
+<span class="result-warning">⚠️ Correction rate: Max 8–10 mEq/L per 24h (risk of osmotic demyelination)</span>
+<span class="result-dim">Formula: TBW × (Target Na − Current Na)</span>`;
+    }
+
+    else if (currentCalc === 'ast_alt') {
+      const ast = g('c_ast'), alt = g('c_alt');
+      if (isNaN(ast)||isNaN(alt)||alt<=0) throw 'Enter valid AST and ALT.';
+      const ratio = ast/alt;
+      const interp = ratio>2?'🚨 Suggestive of alcoholic liver disease':ratio>1?'⚠️ May suggest cirrhosis or ALD':'✅ Suggests acute hepatitis / non-alcoholic liver disease';
+      const cls = ratio>2?'result-danger':ratio>1?'result-warning':'result-normal';
+      html = `<span class="result-header">🔬 AST/ALT RATIO (De Ritis)</span>
+<span class="result-dim">────────────────</span>
+AST: ${ast} U/L | ALT: ${alt} U/L
+
+<span class="result-dim">Ratio:</span> <span class="${cls}">${ratio.toFixed(2)}</span>
+${interp}
+
+<span class="result-dim">Interpretation guide:
+>2.0 → Alcoholic liver disease
+>1.0 → Cirrhosis, non-viral
+<1.0 → Viral / toxic hepatitis</span>`;
+    }
+
+    else if (currentCalc === 'delta') {
+      const ag = g('c_dag'), hco3 = g('c_dhco3');
+      if (isNaN(ag)||isNaN(hco3)) throw 'Enter anion gap and bicarbonate.';
+      const delta = (ag - 12) / (24 - hco3);
+      let interp, cls;
+      if (delta < 1) { interp = 'Coexisting non-AG metabolic acidosis'; cls = 'result-warning'; }
+      else if (delta <= 2) { interp = 'Pure elevated AG metabolic acidosis'; cls = 'result-normal'; }
+      else { interp = 'Coexisting metabolic alkalosis (or preexisting elevated HCO₃)'; cls = 'result-warning'; }
+      html = `<span class="result-header">∆ DELTA-DELTA GAP</span>
+<span class="result-dim">────────────────</span>
+Anion Gap: ${ag} | Bicarbonate: ${hco3} mEq/L
+
+<span class="result-dim">Delta Ratio:</span> <span class="${cls}">${delta.toFixed(2)}</span>
+<span class="result-value">${interp}</span>
+
+<span class="result-dim">Formula: (AG − 12) / (24 − HCO₃)
+<1.0: Coexisting non-AG acidosis
+1.0–2.0: Pure AG acidosis
+>2.0: Coexisting metabolic alkalosis</span>`;
+    }
+
+    else if (currentCalc === 'albumin_ag') {
+      const ag = g('c_aag'), alb = g('c_aalb');
+      if (isNaN(ag)||isNaN(alb)) throw 'Enter anion gap and albumin.';
+      const corrAG = ag + 2.5*(4-alb);
+      const cls = corrAG>12?'result-danger':corrAG<8?'result-warning':'result-normal';
+      const interp = corrAG<8?'⬇️ Low anion gap':corrAG<=12?'✅ Normal':corrAG<=16?'⚠️ Slightly elevated':'🚨 High anion gap metabolic acidosis';
+      html = `<span class="result-header">🩸 ALBUMIN-CORRECTED ANION GAP</span>
+<span class="result-dim">────────────────</span>
+Measured AG: ${ag} | Albumin: ${alb} g/dL
+
+<span class="result-dim">Corrected AG:</span> <span class="${cls}">${corrAG.toFixed(1)} mEq/L</span>
+${interp}
+
+<span class="result-dim">Formula: AG_corr = AG + 2.5 × (4 − Albumin)
+Important in hypoalbuminemic patients!</span>`;
+    }
+
+    out.innerHTML = html || '<span class="result-dim">No result.</span>';
+
+  } catch(e) {
+    out.innerHTML = `<span class="result-danger">❌ Error: ${e}</span>`;
+  }
+}
+
+// Initialize first calculator fields
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('calcTitle').textContent = CALC_DEFS['egfr'].title;
+  document.getElementById('calcFields').innerHTML = CALC_DEFS['egfr'].fields;
+});
+
+// ========================================
+// REFERENCE TABLE
+// ========================================
+function renderReferenceTable() {
+  const filter = document.getElementById('refPanelFilter').value;
+  const tbody = document.getElementById('refTableBody');
+  tbody.innerHTML = '';
+
+  Object.entries(LAB_DATA).forEach(([panel, tests]) => {
+    if (filter !== 'ALL' && panel !== filter) return;
+    Object.entries(tests).forEach(([test, d]) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><span style="font-family:var(--mono);font-size:11px;color:var(--accent);">${panel}</span></td>
+        <td>${test}</td>
+        <td><span style="color:var(--text3);font-size:12px;">${d.unit}</span></td>
+        <td style="color:var(--normal);">${d.male[0]} – ${d.male[1]}</td>
+        <td style="color:var(--accent2);">${d.female[0]} – ${d.female[1]}</td>
+        <td style="color:var(--danger);font-size:12px;">${d.critLow !== null ? d.critLow : '—'}</td>
+        <td style="color:var(--danger);font-size:12px;">${d.critHigh !== null ? d.critHigh : '—'}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  });
+}
+
+// Kick off on load
+renderReferenceTable();
+</script>
+</body>
+</html>
